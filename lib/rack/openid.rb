@@ -5,6 +5,7 @@ require 'openid'
 require 'openid/consumer'
 require 'openid/extensions/sreg'
 require 'openid/extensions/ax'
+require 'openid/extensions/pape'
 require 'openid/extensions/oauth'
 
 module Rack #:nodoc:
@@ -122,6 +123,11 @@ module Rack #:nodoc:
         begin
           oidreq = consumer.begin(identifier)
           add_simple_registration_fields(oidreq, params)
+
+           unless params['pape'].nil?
+            add_pape(oidreq,params['pape'])
+          end
+
           add_attribute_exchange_fields(oidreq, params)
           add_oauth_fields(oidreq, params)
           url = open_id_redirect_url(req, oidreq, params["trust_root"], params["return_to"], params["method"], immediate)
@@ -234,6 +240,14 @@ module Rack #:nodoc:
         sregreq.policy_url = policy_url if policy_url
 
         oidreq.add_extension(sregreq)
+      end
+
+      def add_pape(oidreq,maxAge)
+          papereq = ::OpenID::PAPE::Request.new
+          papereq.add_policy_uri(::OpenID::PAPE::AUTH_PHISHING_RESISTANT)
+          papereq.max_auth_age = maxAge
+          oidreq.add_extension(papereq)
+          oidreq.return_to_args['did_pape'] = 'y'
       end
 
       def add_attribute_exchange_fields(oidreq, fields)
