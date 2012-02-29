@@ -6,6 +6,7 @@ require 'openid/consumer'
 require 'openid/extensions/sreg'
 require 'openid/extensions/ax'
 require 'openid/extensions/oauth'
+require 'openid/extensions/ui'
 
 module Rack #:nodoc:
   # A Rack middleware that provides a more HTTPish API around the
@@ -124,6 +125,7 @@ module Rack #:nodoc:
           add_simple_registration_fields(oidreq, params)
           add_attribute_exchange_fields(oidreq, params)
           add_oauth_fields(oidreq, params)
+          add_ui_fields(oidreq, params)
           url = open_id_redirect_url(req, oidreq, params["trust_root"], params["return_to"], params["method"], immediate)
           return redirect_to(url)
         rescue ::OpenID::OpenIDError, Timeout::Error => e
@@ -256,10 +258,16 @@ module Rack #:nodoc:
       end
 
       def add_oauth_fields(oidreq, fields)
-        if (consumer = fields['oauth[consumer]']) &&
-              (scope = fields['oauth[scope]'])
-          oauthreq = ::OpenID::OAuth::Request.new(consumer, Array(scope).join(' '))
+        if fields['oauth[consumer]']
+          oauthreq = ::OpenID::OAuth::Request.new(fields['oauth[consumer]'], Array(fields['oauth[scope]']).join(' '))
           oidreq.add_extension(oauthreq)
+        end
+      end
+
+      def add_ui_fields(oidreq, fields)
+        if fields['ui[mode]'] || fields['ui[icon]'] || fields['ui[lang]']
+          uireq = ::OpenID::UI::Request.new(fields['ui[mode]'], fields['ui[icon]'], fields['ui[lang]'])
+          oidreq.add_extension(uireq)
         end
       end
 
