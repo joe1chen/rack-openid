@@ -79,6 +79,14 @@ class TestHeader < Test::Unit::TestCase
     assert_match(/OpenID /, header)
     assert_match(/identity="http:\/\/example\.com\/"/, header)
     assert_match(/required="nickname,email"/, header)
+
+    header = Rack::OpenID.build_header(:identity => "http://example.com/", :required => ["nickname", "email"],  :return_to => "http://example.org/continue?did_pape=y", :pape => 0)
+    assert_match(/OpenID /, header)
+    assert_match(/identity="http:\/\/example\.com\/"/, header)
+    assert_match(/required="nickname,email"/, header)
+    assert_match(/pape="0"/,header)
+    assert_match(/return_to="http:\/\/example.org\/continue\?did_pape=y"/, header)
+
   end
 
   def test_parse_header
@@ -90,6 +98,8 @@ class TestHeader < Test::Unit::TestCase
       Rack::OpenID.parse_header('OpenID identity="http://example.com/", return_to="http://example.org/"'))
     assert_equal({"identity" => "http://example.com/", "required" => ["nickname", "email"]},
       Rack::OpenID.parse_header('OpenID identity="http://example.com/", required="nickname,email"'))
+    assert_equal({"identity" => "http://example.com/", "required" => ["nickname", "email"], "return_to"=>"http://example.org/continue?did_pape=y", "pape" => '0'},
+      Rack::OpenID.parse_header('OpenID identity="http://example.com/", required="nickname,email", return_to="http://example.org/continue?did_pape=y", pape="0"'))
 
     # ensure we don't break standard HTTP basic auth
     assert_equal({},
@@ -345,6 +355,21 @@ class TestOpenID < Test::Unit::TestCase
     @app = app
     process('/', :method => 'GET', "MOCK_HTTP_BASIC_AUTH" => '1')
     assert_equal 401, @response.status
+  end
+
+  def test_with_pape
+    @app = app(
+      :required => ["http://axschema.org/contact/email",
+                    "http://axschema.org/namePerson/first"],
+      :return_to => 'http://example.org/complete',
+      :pape => 0,
+      :method => 'POST')
+    process('/', :method => 'POST')
+    follow_redirect!
+    assert_equal 200, @response.status
+    assert_equal 'POST', @response.headers['X-Method']
+    assert_equal '/complete', @response.headers['X-Path']
+    assert_equal 'success', @response.body
   end
 
   private
