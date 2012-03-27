@@ -125,7 +125,7 @@ module Rack #:nodoc:
           oidreq = consumer.begin(identifier)
           add_simple_registration_fields(oidreq, params)
 
-           unless params['pape'].nil?
+          unless params['pape'].nil?
             add_pape(oidreq,params['pape'])
           end
 
